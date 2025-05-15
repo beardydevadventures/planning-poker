@@ -9,339 +9,337 @@
 
     <div class="col-12 col-md-3 order-md-12">
         {{!-- <div class="admin-controls mb-3 d-none d-md-block"> --}}
-        <div class="admin-controls mb-3">
-            {{> controls}}
-        </div>
+            <div class="admin-controls mb-3">
+                {{> controls}}
+            </div>
 
-        <div class="card shadow-sm mb-3">
-            <div class="card-body">
-                <h5 id="room-name" class="card-title editable admin-editable">Room name</h5>
-                <form class="message-form form-inline">
-                    <div class="input-group mb-3">
-                        <input type="text" class="form-control form-control-sm" id="message"
-                            placeholder="Message room..." aria-label="message" aria-describedby="button-addon2">
-                        <div class="input-group-append">
-                            <button class="btn btn-outline-secondary btn-sm" type="submit"
-                                id="button-addon2">Send</button>
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <h5 id="room-name" class="card-title editable admin-editable">Room name</h5>
+                    <form class="message-form form-inline">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control form-control-sm" id="message"
+                                placeholder="Message room..." aria-label="message" aria-describedby="button-addon2">
+                            <div class="input-group-append">
+                                <button class="btn btn-outline-secondary btn-sm" type="submit"
+                                    id="button-addon2">Send</button>
+                            </div>
                         </div>
-                    </div>
-                </form>
-                {{> members}}
+                    </form>
+                    {{> members}}
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-12 col-md-9">
-        <div class="text-center">
-            <div id="task-name-area">
-                <h1 id="task-name" class="d-inline mb-2 editable admin-editable">New Task</h1>
+        <div class="col-12 col-md-9">
+            <div class="text-center">
+                <div id="task-name-area">
+                    <h1 id="task-name" class="d-inline mb-2 editable admin-editable">New Task</h1>
+                </div>
+                <hr>
             </div>
-            <hr>
+
+            <div class="text-center mb-3">
+                {{#each cards}}
+                {{> card this}}
+                {{/each}}
+            </div>
+
+            <div class="progress mb-3">
+                <div class="progress-bar poker-progress-bar" style="width: 0%;" role="progressbar" aria-valuenow="00"
+                    aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+
+            <div class="text-center mb-3">
+                <h5 class="total-effort"></h5>
+            </div>
+
+            <div class="mb-3">
+                <div class="played-cards row row-cols-2 row-cols-md-4"></div>
+            </div>
+
+            <ul id="messages" class="list-group"></ul>
         </div>
 
-        <div class="text-center mb-3">
-            {{#each cards}}
-            {{> card this}}
-            {{/each}}
-        </div>
-
-        <div class="progress mb-3">
-            <div class="progress-bar poker-progress-bar" style="width: 0%;" role="progressbar" aria-valuenow="00"
-                aria-valuemin="0" aria-valuemax="100"></div>
-        </div>
-
-        <div class="text-center mb-3">
-            <h5 class="total-effort"></h5>
-        </div>
-
-        <div class="mb-3">
-            <div class="played-cards row row-cols-2 row-cols-md-4"></div>
-        </div>
-
-        <ul id="messages" class="list-group"></ul>
     </div>
-
-</div>
-{{> scripts}}
-<script>
-    $(function () {
-        let roomData = {};
-        if (window.location.hash) {
-            hash = window.location.hash.substring(1);
-            roomData.hash = hash;
-            roomData.roomname = '';
-            if (localStorage.getItem(hash + 'room') !== null) {
-                roomData.roomname = localStorage.getItem(hash + 'room');
-            }
-            roomData.username = '';
-            if (localStorage.getItem('pp-username') !== null) {
+    {{> scripts}}
+    <script>
+        $(function () {
+            let roomData = {};
+            if (window.location.hash) {
+                hash = window.location.hash.substring(1);
+                roomData.hash = hash;
                 roomData.username = localStorage.getItem('pp-username');
-            }
-            roomController(roomData);
-        } else {
-            window.location.href = "/";
-        }
-    });
-
-    function roomController(roomData) {
-        const socket = io();
-        let isHost = false;
-
-        //hide all controls
-        $('#task-name-form').hide();
-        $('.admin-controls').hide();
-
-        //if desktop show members
-        const windowWidth = $(window).width();
-        if (windowWidth >= 768) {
-            $('#collapseMembers').addClass('show')
-        }
-
-        //disable cards
-        $('.poker-card').attr('disabled', 'disabled');
-        $('.admin-controls .btn').attr('disabled', 'disabled');
-        $('.admin-controls .start-poker').removeAttr('disabled');
-
-        //connecting to room
-        socket.emit('connectToRoom', roomData);
-
-        socket.on('connectedToRoom', function (response) {
-            $('#welcome-message').html(response.message);
-            if (response.is_host) {
-                $('.admin-controls').show();
-                $('.admin-editable').attr('contenteditable', true);
-                isHost = true;
+                roomData.roomname = localStorage.getItem(hash + 'room');
+                roomController(roomData);
             } else {
-                //we need to show all previous room content
-                $.each(response.room.chat_history, function (i, val) {
-                    $('#messages').prepend($('<li class="list-group-item">').html(val));
-                });
+                window.location.href = "/";
             }
-            $('.poker-username').text(response.username);
-            $('#room-name').html(response.room.name);
-            $('#task-name').html(response.room.task);
         });
 
-        //for planning poker
-        $('.start-poker').on("click", function () {
-            $('.admin-controls .btn').attr('disabled', 'disabled');
-            $('.admin-controls .reset-poker').removeAttr('disabled');
-            socket.emit('startPoker', { "room": hash });
-        });
+        function roomController(roomData) {
+            const socket = io();
+            let isHost = false;
+            //hide all controls
+            $('#task-name-form').hide();
+            $('.admin-controls').hide();
 
-        $('.reset-poker').on("click", function () {
+            //if desktop show members
+            const windowWidth = $(window).width();
+            if (windowWidth >= 768) {
+                $('#collapseMembers').addClass('show')
+            }
+
+            //disable cards
+            $('.poker-card').attr('disabled', 'disabled');
             $('.admin-controls .btn').attr('disabled', 'disabled');
             $('.admin-controls .start-poker').removeAttr('disabled');
-            socket.emit('restartPoker', { "room": hash });
-        });
 
-        $('.stop-poker').on("click", function () {
-            socket.emit('stopPoker', { "room": hash });
-        });
-
-        $('.resume-poker').on("click", function () {
-            socket.emit('resumePoker', { "room": hash });
-        });
-
-        $('.reveal-poker').on("click", function () {
-            $('.admin-controls .btn').attr('disabled', 'disabled');
-            $('.admin-controls .start-poker').removeAttr('disabled');
-            $('.admin-controls .reset-poker').removeAttr('disabled');
-            socket.emit('revealPoker', { "room": hash });
-        });
-
-        $('.poker-card').on("click", function () {
-            let value = $(this).data("value");
-            $('.poker-card').attr('disabled', 'disabled');
-            $('.poker-card').removeClass('btn-primary').addClass('btn-secondary');
-            $(this).removeClass('btn-secondary').addClass('btn-success');
-            socket.emit('pokerPlayed', { "room": hash, "value": value, "user": socket.id });
-        });
-
-        socket.on('unlockCards', function (msg) {
-            $('.poker-card').removeAttr('disabled');
-            $('.poker-card').removeClass('btn-success').removeClass('btn-secondary').addClass('btn-primary');
-        });
-
-        socket.on('lockCards', function (msg) {
-            $('.poker-card').attr('disabled', 'disabled');
-            $('.poker-card').removeClass('btn-success').removeClass('btn-primary').addClass('btn-secondary');
-        });
-
-        socket.on('updatePercentage', function (percent) {
-            $('.poker-progress-bar').width(percent + '%');
-        });
-
-        socket.on('updateCards', function (cards) {
-            $('.played-cards').empty();
-            $('.total-effort').empty();
-            $.each(cards, function (i, played) {
-                var card = document.createElement("div");
-                $(card).addClass("col mb-4");
-                $('.played-cards').append(card);
-
-                $(card).append($('<div class="card played-card text-center border-dark"'
-                    + 'data-value="' + played.value + '" data-user="' + played.user + '">')
-                    .html('<div class="card-body"><h5 class="card-title mb-0">?</div></div>'));
+            //connecting to room
+            socket.on('connect', function () {
+                console.log('✅ Client connected');
+                console.log('📤 Emitting connectToRoom', roomData);
+                socket.emit('connectToRoom', roomData);
             });
-        });
 
-        socket.on('revealCards', function (average) {
-            $('.played-card').each(function (i, val) {
-                $(this).html('<div class="card-body">'
-                    + '<h5 class="card-title">' + $(this).data("value") + '</h5>'
-                    + '<p class="card-text">' + $(this).data("user") + '</p></div>');
-            });
-            $('.total-effort').text('Average estimated effort ' + average);
-        });
-
-        socket.on('pokerFinished', function () {
-            $('.admin-controls .btn').attr('disabled', 'disabled');
-            $('.admin-controls .reveal-poker').removeAttr('disabled');
-        });
-
-        //for chat area (may remove)
-        $('.message-form').submit(function (e) {
-            e.preventDefault(); // prevents page reloading
-            let message = $('#message').val();
-            if (message.length > 0) {
-                socket.emit('chatMessage', { "room": hash, "message": $('#message').val() });
-            }
-            $('#message').val('');
-            return false;
-        });
-
-        //any messages append to this feed (may turn into json)
-        socket.on('newChatMessage', function (message) {
-            $('#messages').prepend($('<li class="list-group-item">').html(message));
-        });
-
-        //reload user list
-        socket.on('updateUsers', function (users) {
-            const membersCount = Object.keys(users).length;
-            $('.room-members').empty();
-            $('.member-count').text(membersCount);
-            $.each(users, function (i, val) {
-                let classes = '';
-                let attributes = '';
-                let element = 'button type="button"';
-                let string = val.name;
-                if (i == socket.id) {
-                    string = '<span id="user-name" class="editable" contenteditable="true">' + val.name + '</span>';
-                }
-                if (val.played == true) {
-                    string = '<span class="badge badge-success badge-pill">Played</span>' + string;
-                }
-                if (val.is_host == true) {
-                    string += '<span class="badge badge-primary badge-pill">Admin</span>';
-                    if (i == socket.id) {
-                        isHost = true;
-                        $('.admin-controls').show();
-                        $('.admin-controls .btn').attr('disabled', 'disabled');
-                        $('.admin-controls .start-poker').removeAttr('disabled');
-                        $('.admin-controls .reset-poker').removeAttr('disabled');
-                        $('.admin-editable').attr('contenteditable', true);
-                    }
-                }
-                if (i == socket.id) {
-                    $('.poker-username').text(val.name);
-                    element = 'div';
-                    classes += ' list-group-item-primary';
-                    if (val.is_host == false) {
-                        isHost = false;
-                        $('.admin-controls').hide();
-                        $('.admin-editable').attr('contenteditable', false);
-                    }
+            socket.on('connectedToRoom', function (response) {
+                console.log('connectedToRoom', response);
+                $('#welcome-message').html(response.message);
+                if (response.is_host) {
+                    $('.admin-controls').show();
+                    $('.admin-editable').attr('contenteditable', true);
+                    isHost = true;
                 } else {
-                    classes += ' member-item list-group-item-action';
+                    //we need to show all previous room content
+                    $.each(response.room.chat_history, function (i, val) {
+                        $('#messages').prepend($('<li class="list-group-item">').html(val));
+                    });
                 }
-                attributes += ' data-userid="' + i + '" data-username="' + val.name + '"';
-                $('.room-members').append($('<' + element + ' class="list-group-item d-flex  justify-content-between align-items-center' + classes + '"' + attributes + '>').html(string));
+                $('.poker-username').text(response.username);
+                $('#room-name').html(response.room.name);
+                $('#task-name').html(response.room.task);
             });
-        });
 
-        //set user admin
-        $(document).on('click', '.member-item', function () {
-            if (isHost) {
-                var setAdmin = confirm("Would you like to make " + $(this).data('username') + " an admin?");
-                if (setAdmin == true) {
-                    socket.emit('changeHost', { "room": hash, "user_id": $(this).data('userid') });
+            //for planning poker
+            $('.start-poker').on("click", function () {
+                $('.admin-controls .btn').attr('disabled', 'disabled');
+                $('.admin-controls .reset-poker').removeAttr('disabled');
+                socket.emit('startPoker', { "room": hash });
+            });
+
+            $('.reset-poker').on("click", function () {
+                $('.admin-controls .btn').attr('disabled', 'disabled');
+                $('.admin-controls .start-poker').removeAttr('disabled');
+                socket.emit('restartPoker', { "room": hash });
+            });
+
+            $('.stop-poker').on("click", function () {
+                socket.emit('stopPoker', { "room": hash });
+            });
+
+            $('.resume-poker').on("click", function () {
+                socket.emit('resumePoker', { "room": hash });
+            });
+
+            $('.reveal-poker').on("click", function () {
+                $('.admin-controls .btn').attr('disabled', 'disabled');
+                $('.admin-controls .start-poker').removeAttr('disabled');
+                $('.admin-controls .reset-poker').removeAttr('disabled');
+                socket.emit('revealPoker', { "room": hash });
+            });
+
+            $('.poker-card').on("click", function () {
+                let value = $(this).data("value");
+                $('.poker-card').attr('disabled', 'disabled');
+                $('.poker-card').removeClass('btn-primary').addClass('btn-secondary');
+                $(this).removeClass('btn-secondary').addClass('btn-success');
+                socket.emit('pokerPlayed', { "room": hash, "value": value, "user": socket.id });
+            });
+
+            socket.on('unlockCards', function (msg) {
+                $('.poker-card').removeAttr('disabled');
+                $('.poker-card').removeClass('btn-success').removeClass('btn-secondary').addClass('btn-primary');
+            });
+
+            socket.on('lockCards', function (msg) {
+                $('.poker-card').attr('disabled', 'disabled');
+                $('.poker-card').removeClass('btn-success').removeClass('btn-primary').addClass('btn-secondary');
+            });
+
+            socket.on('updatePercentage', function (percent) {
+                $('.poker-progress-bar').width(percent + '%');
+            });
+
+            socket.on('updateCards', function (cards) {
+                $('.played-cards').empty();
+                $('.total-effort').empty();
+                $.each(cards, function (i, played) {
+                    var card = document.createElement("div");
+                    $(card).addClass("col mb-4");
+                    $('.played-cards').append(card);
+
+                    $(card).append($('<div class="card played-card text-center border-dark"'
+                        + 'data-value="' + played.value + '" data-user="' + played.user + '">')
+                        .html('<div class="card-body"><h5 class="card-title mb-0">?</div></div>'));
+                });
+            });
+
+            socket.on('revealCards', function (average) {
+                $('.played-card').each(function (i, val) {
+                    $(this).html('<div class="card-body">'
+                        + '<h5 class="card-title">' + $(this).data("value") + '</h5>'
+                        + '<p class="card-text">' + $(this).data("user") + '</p></div>');
+                });
+                $('.total-effort').text('Average estimated effort ' + average);
+            });
+
+            socket.on('pokerFinished', function () {
+                $('.admin-controls .btn').attr('disabled', 'disabled');
+                $('.admin-controls .reveal-poker').removeAttr('disabled');
+            });
+
+            //for chat area (may remove)
+            $('.message-form').submit(function (e) {
+                e.preventDefault(); // prevents page reloading
+                let message = $('#message').val();
+                if (message.length > 0) {
+                    socket.emit('chatMessage', { "room": hash, "message": $('#message').val() });
                 }
-            }
-        });
+                $('#message').val('');
+                return false;
+            });
 
-        //update task name text
-        let taskName = '';
-        $('#task-name').on('focusin', function () {
-            taskName = $(this).html();
-        });
+            //any messages append to this feed (may turn into json)
+            socket.on('newChatMessage', function (message) {
+                $('#messages').prepend($('<li class="list-group-item">').html(message));
+            });
 
-        $('#task-name').on('focusout', function () {
-            let newTaskName = $(this).html();
-            if (newTaskName != '' && newTaskName != taskName) {
-                taskName = newTaskName;
-                socket.emit('changeTaskName', { "room": hash, "name": newTaskName });
-            }
+            //reload user list
+            socket.on('updateUsers', function (users) {
+                const membersCount = Object.keys(users).length;
+                $('.room-members').empty();
+                $('.member-count').text(membersCount);
+                $.each(users, function (i, val) {
+                    let classes = '';
+                    let attributes = '';
+                    let element = 'button type="button"';
+                    let string = val.name;
+                    if (i == socket.id) {
+                        string = '<span id="user-name" class="editable" contenteditable="true">' + val.name + '</span>';
+                    }
+                    if (val.played == true) {
+                        string = '<span class="badge badge-success badge-pill">Played</span>' + string;
+                    }
+                    if (val.is_host == true) {
+                        string += '<span class="badge badge-primary badge-pill">Admin</span>';
+                        if (i == socket.id) {
+                            isHost = true;
+                            $('.admin-controls').show();
+                            $('.admin-controls .btn').attr('disabled', 'disabled');
+                            $('.admin-controls .start-poker').removeAttr('disabled');
+                            $('.admin-controls .reset-poker').removeAttr('disabled');
+                            $('.admin-editable').attr('contenteditable', true);
+                        }
+                    }
+                    if (i == socket.id) {
+                        $('.poker-username').text(val.name);
+                        element = 'div';
+                        classes += ' list-group-item-primary';
+                        if (val.is_host == false) {
+                            isHost = false;
+                            $('.admin-controls').hide();
+                            $('.admin-editable').attr('contenteditable', false);
+                        }
+                    } else {
+                        classes += ' member-item list-group-item-action';
+                    }
+                    attributes += ' data-userid="' + i + '" data-username="' + val.name + '"';
+                    $('.room-members').append($('<' + element + ' class="list-group-item d-flex  justify-content-between align-items-center' + classes + '"' + attributes + '>').html(string));
+                });
+            });
 
-            //if task name was blank then change back to old name
-            if (newTaskName == '') {
-                $('#task-name').html(taskName);
-            }
-        });
+            //set user admin
+            $(document).on('click', '.member-item', function () {
+                if (isHost) {
+                    var setAdmin = confirm("Would you like to make " + $(this).data('username') + " an admin?");
+                    if (setAdmin == true) {
+                        socket.emit('changeHost', { "room": hash, "user_id": $(this).data('userid') });
+                    }
+                }
+            });
 
-        socket.on('updateTaskName', function (newTaskName) {
-            $('#task-name').html(newTaskName);
-        });
+            //update task name text
+            let taskName = '';
+            $('#task-name').on('focusin', function () {
+                taskName = $(this).html();
+            });
 
-        //update room name
-        let roomname = '';
-        $('#room-name').on('focusin', function () {
-            roomName = $(this).html();
-        });
+            $('#task-name').on('focusout', function () {
+                let newTaskName = $(this).html();
+                if (newTaskName != '' && newTaskName != taskName) {
+                    taskName = newTaskName;
+                    socket.emit('changeTaskName', { "room": hash, "name": newTaskName });
+                }
 
-        $('#room-name').on('focusout', function () {
-            let newRoomName = $(this).html();
-            if (newRoomName != '' && newRoomName != roomName) {
-                roomName = newRoomName;
-                socket.emit('changeRoomName', { "room": hash, "name": newRoomName });
-            }
+                //if task name was blank then change back to old name
+                if (newTaskName == '') {
+                    $('#task-name').html(taskName);
+                }
+            });
 
-            //if room name was blank then change back to old name
-            if (newRoomName == '') {
-                $('#room-name').html(roomName);
-            }
-        });
+            socket.on('updateTaskName', function (newTaskName) {
+                $('#task-name').html(newTaskName);
+            });
 
-        socket.on('updateRoomName', function (newRoomName) {
-            $('#room-name').html(newRoomName);
-        });
+            //update room name
+            let roomname = '';
+            $('#room-name').on('focusin', function () {
+                roomName = $(this).html();
+            });
 
-        //update user name
-        let userName = '';
-        $(document).on('focusin', '#user-name', function () {
-            userName = $(this).html();
-        });
+            $('#room-name').on('focusout', function () {
+                let newRoomName = $(this).html();
+                if (newRoomName != '' && newRoomName != roomName) {
+                    roomName = newRoomName;
+                    socket.emit('changeRoomName', { "room": hash, "name": newRoomName });
+                }
 
-        $(document).on('focusout', '#user-name', function () {
-            let newUserName = $(this).html();
-            if (newUserName != '' && newUserName != userName) {
-                userName = newUserName;
-                localStorage.setItem('pp-username', newUserName);
-                socket.emit('changeUserName', { "room": hash, "name": newUserName });
-            }
+                //if room name was blank then change back to old name
+                if (newRoomName == '') {
+                    $('#room-name').html(roomName);
+                }
+            });
 
-            //if user name was blank then change back to old name
-            if (newUserName == '') {
-                $('#user-name').html(userName);
-            }
-        });
+            socket.on('updateRoomName', function (newRoomName) {
+                $('#room-name').html(newRoomName);
+            });
 
-        //leave an editable area if enter is pressed
-        $(document).on('keydown', '.editable', function (e) {
-            var key = e.keyCode;
-            if (key == 13) {  // if enter key is pressed
-                $(this).blur();
-            }
-        });
-    }
-</script>
+            //update user name
+            let userName = '';
+            $(document).on('focusin', '#user-name', function () {
+                userName = $(this).html();
+            });
+
+            $(document).on('focusout', '#user-name', function () {
+                let newUserName = $(this).html();
+                if (newUserName != '' && newUserName != userName) {
+                    userName = newUserName;
+                    localStorage.setItem('pp-username', newUserName);
+                    socket.emit('changeUserName', { "room": hash, "name": newUserName });
+                }
+
+                //if user name was blank then change back to old name
+                if (newUserName == '') {
+                    $('#user-name').html(userName);
+                }
+            });
+
+            //leave an editable area if enter is pressed
+            $(document).on('keydown', '.editable', function (e) {
+                var key = e.keyCode;
+                if (key == 13) {  // if enter key is pressed
+                    $(this).blur();
+                }
+            });
+        }
+    </script>

@@ -1,5 +1,5 @@
 const express = require('express');
-const handlebars = require('express-handlebars');
+const { engine } = require('express-handlebars');
 const PORT = process.env.PORT || 3000;
 const app = express();
 const server = app.listen(PORT, () => console.log(`Listening on ${PORT}`));
@@ -16,7 +16,7 @@ let pokerRooms = {};
 app.set('view engine', 'hbs');
 
 //handlebar configs
-app.engine('hbs', handlebars({
+app.engine('hbs', engine({
     layoutsDir: __dirname + '/views/layouts',
     extname: 'hbs',
     defaultLayout: 'homepage'
@@ -39,52 +39,54 @@ app.get('/room', (req, res) => {
 });
 
 io.on('connection', function (socket) {
+    console.log("🟢 A client connected:", socket.id);
 
     //connect to a room
     socket.on('connectToRoom', function (roomData) {
+        console.log("🔌 connectToRoom received:", roomData);
         const room = roomData.hash;
         if (socket.room) {
             socket.leave(socket.room);
         }
-        socket.join(room, function () {
-            socket.isHost = false;
-            socket.room = room;
-            socket.username = userName(roomData.username);
+        socket.join(room);
 
-            //create a default room if one isn't made
-            if (!pokerRooms.hasOwnProperty(room)) {
-                pokerRooms[room] = {
-                    name: roomName(roomData.roomname),
-                    task: 'New Task',
-                    average: 0,
-                    users: {},
-                    played: 0,
-                    numbers: [],
-                    host: socket.id,
-                    chat_history: []
-                };
-                socket.is_host = true;
-            }
+        socket.isHost = false;
+        socket.room = room;
+        socket.username = userName(roomData.username);
 
-            //update amount of users in room
-            pokerRooms[room].users[socket.id] = {
-                name: socket.username,
-                is_host: socket.is_host,
-                played: false
+        //create a default room if one isn't made
+        if (!pokerRooms.hasOwnProperty(room)) {
+            pokerRooms[room] = {
+                name: roomName(roomData.roomname),
+                task: 'New Task',
+                average: 0,
+                users: {},
+                played: 0,
+                numbers: [],
+                host: socket.id,
+                chat_history: []
             };
+            socket.isHost = true;
+        }
 
-            //announce user has joined room
-            updateUsers(room);
-            if (!socket.is_host) {
-                chatMessage(room, 'joined the room', true, true);
-            }
-            roomList(false);
-            socket.emit('connectedToRoom', {
-                is_host: socket.is_host,
-                username: socket.username,
-                room: pokerRooms[room],
-                message: 'Welcome <strong>' + socket.username + '</strong>, You have connected to room <strong>' + pokerRooms[room].name + '</strong>'
-            });
+        //update amount of users in room
+        pokerRooms[room].users[socket.id] = {
+            name: socket.username,
+            is_host: socket.isHost,
+            played: false
+        };
+
+        //announce user has joined room
+        updateUsers(room);
+        if (!socket.isHost) {
+            chatMessage(room, 'joined the room', true, true);
+        }
+        roomList(false);
+        socket.emit('connectedToRoom', {
+            is_host: socket.isHost,
+            username: socket.username,
+            room: pokerRooms[room],
+            message: 'Welcome <strong>' + socket.username + '</strong>, You have connected to room <strong>' + pokerRooms[room].name + '</strong>'
         });
 
     });
@@ -108,7 +110,7 @@ io.on('connection', function (socket) {
 
     //change username
     socket.on('changeUserName', function (data) {
-        chatMessage(data.room, 'changed their username to <strong>'+data.name+'</strong>');
+        chatMessage(data.room, 'changed their username to <strong>' + data.name + '</strong>');
         pokerRooms[data.room].users[socket.id].name = data.name;
         socket.username = data.name;
         updateUsers(data.room);
@@ -178,7 +180,7 @@ io.on('connection', function (socket) {
         let amountUsers = Object.keys(pokerRooms[data.room].users).length;
         let percentageComplete = pokerRooms[data.room].played / amountUsers * 100;
         updatePercentage(data.room, percentageComplete);
-        pokerRooms[data.room].numbers.push({user: socket.username, value: data.value});
+        pokerRooms[data.room].numbers.push({ user: socket.username, value: data.value });
         updateCards(data.room);
 
         pokerRooms[data.room].users[socket.id].played = true;
@@ -216,8 +218,14 @@ io.on('connection', function (socket) {
         if (appendUsername) {
             messageString = "<strong>" + socket.username + "</strong> " + message;
         }
-        pokerRooms[room].chat_history.push(messageString);
-        if(ingoreUser) {
+
+        if (pokerRooms[room]) {
+            pokerRooms[room].chat_history.push(messageString);
+        } else {
+            console.warn(`Tried to push chat message to non-existent room: ${room}`);
+        }
+
+        if (ingoreUser) {
             socket.to(room).emit('newChatMessage', messageString);
         } else {
             io.in(room).emit('newChatMessage', messageString);
@@ -294,15 +302,15 @@ io.on('connection', function (socket) {
 
 //global functions
 function roomName(roomName) {
-    if (roomName == '') {
+    if (!roomName || roomName.trim() === '') {
         roomName = randomNames.roomnames[Math.floor(Math.random() * randomNames.roomnames.length)].name;
     }
     return roomName;
 }
 
 function userName(userName) {
-    if (userName == '') {
-        userName = randomNames.usernames[Math.floor(Math.random() * randomNames.usernames.length)].name;
+    if (!userName || userName.trim() === '') {
+        return randomNames.usernames[Math.floor(Math.random() * randomNames.usernames.length)].name;
     }
     return userName;
 }

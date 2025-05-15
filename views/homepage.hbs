@@ -10,7 +10,8 @@
             <input type="text" class="form-control form-control-lg" id="user-name" placeholder="User name"
                 aria-label="username" aria-describedby="button-addon2">
             <div class="input-group-append">
-                <button class="btn btn-lg btn-outline-primary join-room-btn" type="submit" id="button-addon2">Join</button>
+                <button class="btn btn-lg btn-outline-primary join-room-btn" type="submit"
+                    id="button-addon2">Join</button>
             </div>
         </div>
         <div class="mb-3">
@@ -20,7 +21,8 @@
             <input type="text" class="form-control form-control-lg" id="room-name" placeholder="Room name"
                 aria-label="username" aria-describedby="button-addon2">
             <div class="input-group-append">
-                <button class="btn btn-lg btn-outline-primary create-room-btn" type="submit" id="button-addon2">Create</button>
+                <button class="btn btn-lg btn-outline-primary create-room-btn" type="submit"
+                    id="button-addon2">Create</button>
             </div>
         </div>
         <div class="mb-2">
@@ -36,14 +38,15 @@
     <script>
         $(function () {
             $(".join-room-btn").on("click", function () {
-                const userName = $('#user-name').val();
+                let userName = $('#user-name').val().trim();
                 localStorage.setItem('pp-username', userName);
                 window.location.href = "/rooms";
             });
+
             $(".create-room-btn").on("click", function () {
                 const roomID = randomstring();
-                const userName = $('#user-name').val();
-                const roomName = $('#room-name').val();
+                let userName = $('#user-name').val().trim();
+                let roomName = $('#room-name').val().trim();
                 localStorage.setItem(roomID + 'room', roomName);
                 localStorage.setItem('pp-username', userName);
                 window.location.href = "/room#" + roomID;
